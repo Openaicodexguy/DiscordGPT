@@ -11,8 +11,11 @@ client = discord.Client()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Define the necessary intents
-intents = discord.Intents.all()
+# Define your intents
+intents = discord.Intents.all()  # This allows all privileged and unprivileged intents
+
+# Create the client with the specified intents
+client = discord.Client(intents=intents)
 
 # Create a bot instance with specified intents
 bot = commands.Bot(command_prefix='', intents=intents)
