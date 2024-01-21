@@ -1,42 +1,60 @@
-# bot.py
-import os
 import discord
-import openai  # Import the OpenAI library
-from langchain.chat_models import ChatOpenAI
-from langchain.chains.qa_with_sources.loading import load_qa_with_sources_chain
+import openai
+import os
+import time
+from discord.ext import commands
 
-# Fetch OpenAI API key and Discord token from environment variables
+# Set your OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-if not (openai.api_key and TOKEN):
-    print("Please set the OPENAI_API_KEY and DISCORD_TOKEN environment variables.")
-    exit(1)
-
+# Define the necessary intents
 intents = discord.Intents.default()
-intents.message_content = True
-client = discord.Client(intents=intents)
+intents.messages = True
 
-@client.event
+# Create a bot instance with specified intents
+bot = commands.Bot(command_prefix='', intents=intents)
+
+# Event triggered when the bot is ready
+@bot.event
 async def on_ready():
-    print(f'{client.user} has connected to Discord!')
+    print(f'We have logged in as {bot.user}')
 
-@client.event
+# Event triggered on each received message
+@bot.event
 async def on_message(message):
-    if client.user.mentioned_in(message):
-        llm = ChatOpenAI(temperature=1.0)
-        
-        # Get a response from OpenAI's text generation API
-        openai_response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=message.clean_content,
-            temperature=1.0,
-            max_tokens=150,
-        )
+    # Ignore messages from the bot itself
+    if message.author == bot.user:
+        return
 
-        # Extract the generated response from OpenAI's API response
-        output = openai_response["choices"][0]["text"]
+    # Reply when mentioned
+    if bot.user.mentioned_in(message):
+        # Extract the user's query from the message content
+        user_query = message.content.replace(f'<@!{bot.user.id}>', '').strip()
 
-        await message.reply(output)
+        # Make a request to OpenAI's Davinci engine
+        try:
+            response = openai.Completion.create(
+                engine="text-davinci-003",
+                prompt=user_query,
+                max_tokens=150
+            )
 
-client.run(TOKEN)
+            # Extract the generated response from OpenAI and send it to the user
+            bot_response = response['choices'][0]['text'].strip()
+            await message.channel.send(bot_response)
+
+        except openai.error.OpenAIError as e:
+            if "Rate limit exceeded" in str(e):
+                print("Rate limit exceeded. Waiting for 20 seconds...")
+                time.sleep(20)
+                await message.channel.send("Sorry, we're experiencing high demand. Please try again in 20 seconds.")
+            else:
+                print(f"An error occurred: {e}")
+                await message.channel.send("An error occurred while processing your request.")
+
+    # Let the bot process commands as well
+    await bot.process_commands(message)
+
+# Run the bot with your Discord bot token
+client.run('TOKEN')
