@@ -12,8 +12,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 # Define the necessary intents
-intents = discord.Intents.default()
-intents.messages = True
+intents = discord.Intents.all()
 
 # Create a bot instance with specified intents
 bot = commands.Bot(command_prefix='', intents=intents)
